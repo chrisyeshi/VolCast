@@ -177,12 +177,15 @@
         xhr.responseType = "arraybuffer";
         xhr.addEventListener("load", function() {
             if (xhr.status === 200) {
-                console.log(xhr.response);
+                var result = xhr.response;
+                var volume = new Uint8Array(result);
+                volren.setVolume(volume);
+                volren.paintGL();
             }
         }, false);
         xhr.send();
 
-        volren.paintGL();
+        // volren.paintGL();
     }
 </script>
 
