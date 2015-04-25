@@ -1,0 +1,206 @@
+
+<html>
+
+<head>
+<title>Learning WebGL &mdash; lesson 1</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<link href='volren.css', rel='stylesheet' type='text/css'>
+
+<script type='text/javascript' src='bower_components/gl-matrix/dist/gl-matrix.js'></script>
+<script type="text/javascript" src="bower_components/jquery/dist/jquery.js"></script>
+<script type='text/javascript' src='volren.js'></script>
+
+<script id="shader-vs" type="x-shader/x-vertex">
+    attribute vec4 vertex;
+    attribute vec3 vTexCoord;
+
+    uniform mat4 mvp;
+
+    varying vec3 texCoord;
+
+    void main(void) {
+        gl_Position = mvp * vertex;
+        texCoord = vTexCoord;
+    }
+</script>
+
+<script id="shader-fs" type="x-shader/x-fragment">
+    precision mediump float;
+
+    varying vec3 texCoord;
+
+    void main(void) {
+        gl_FragColor = vec4(vec3(texCoord), 1.0);
+    }
+</script>
+
+<script id="quad-vs" type="x-shader/x-vertex">
+    attribute vec4 vertex;
+    attribute vec2 vTexCoord;
+
+    varying vec2 coordQuad;
+
+    void main(void) {
+        gl_Position = vertex;
+        coordQuad = vTexCoord;
+    }
+</script>
+
+<script id="quad-fs" type="x-shader/x-fragment">
+    precision highp float;
+
+    uniform sampler2D texEntr;
+    uniform sampler2D texExit;
+    uniform sampler2D texVol;
+    varying vec2 coordQuad;
+
+    const int zeroSteps = 0;
+    const int fiftySteps = 50;
+    const int hundredSteps = 100;
+
+    vec4 sampleAs3DTexture(sampler2D tex, vec3 texCoord, float size) {
+        float sliceSize = 1.0 / size;                         // space of 1 slice
+        float slicePixelSize = sliceSize / size;              // space of 1 pixel
+        float sliceInnerSize = slicePixelSize * (size - 1.0); // space of size pixels
+        float zSlice0 = min(floor(texCoord.z * size), size - 1.0);
+        float zSlice1 = min(zSlice0 + 1.0, size - 1.0);
+        // float xOffset = slicePixelSize * 0.5 + texCoord.x * sliceInnerSize;
+        // float s0 = xOffset + (zSlice0 * sliceSize);
+        // float s1 = xOffset + (zSlice1 * sliceSize);
+        // vec4 slice0Color = texture2D(tex, vec2(s0, texCoord.y));
+        // vec4 slice1Color = texture2D(tex, vec2(s1, texCoord.y));
+
+        float yOffset = slicePixelSize * 0.5 + texCoord.y * sliceInnerSize;
+        float s0 = yOffset + (zSlice0 * sliceSize);
+        float s1 = yOffset + (zSlice1 * sliceSize);
+        vec4 slice0Color = texture2D(tex, vec2(texCoord.x, s0));
+        vec4 slice1Color = texture2D(tex, vec2(texCoord.x, s1));
+
+        float zOffset = mod(texCoord.z * size, 1.0);
+        return mix(slice0Color, slice1Color, zOffset);
+    }
+
+    void main(void) {
+        const int zeroSteps = 0;
+        const int fiftySteps = 50;
+        const int hundredSteps = 100;
+        vec3 entr = texture2D(texEntr, coordQuad).xyz;
+        vec3 exit = texture2D(texExit, coordQuad).xyz;
+        vec3 dir = normalize(exit - entr);
+        float baseSample = 0.01;
+        float maxLength = length(exit - entr);
+        vec4 color = vec4(0.0, 1.0, 0.0, 1.0);
+        if (maxLength < 0.001)
+        {
+            color = vec4(0.0, 0.0, 0.0, 0.0);
+
+        } else
+        {
+            float stepSize = maxLength / float(fiftySteps);
+            vec4 acc = vec4(0.0, 0.0, 0.0, 0.0);
+            for (int step = 0; step < fiftySteps; ++step)
+            {
+                vec3 spot = entr + dir * (float(step) * stepSize);
+                float scalar = sampleAs3DTexture(texVol, spot, 32.0).a;
+                vec4 spotColor = vec4(scalar);
+                spotColor.a = 1.0 - pow(1.0 - spotColor.a, stepSize / baseSample);
+                spotColor.rgb *= spotColor.a;
+                acc += spotColor * (1.0 - acc.a);
+                if (acc.a > 0.999)
+                    break;
+            }
+            color = acc;
+        }
+        gl_FragColor = color;
+    }
+</script>
+
+<script type="text/javascript">
+
+    function createMouseEvent(evt, canvas, mousePressed) {
+        var rect = canvas.getBoundingClientRect();
+        return {
+            pressed: mousePressed,
+            button: evt.button,
+            coord: {
+                x: evt.clientX - rect.left,
+                y: evt.clientY - rect.top
+            }
+        }
+    }
+
+    function bindMouseEvents(canvas) {
+        var mousePressed = false;
+        var prevCoord = { x: 0, y: 0 };
+        canvas.onmousedown = function(evt) {
+            mousePressed = true;
+            var e = createMouseEvent(evt, canvas, mousePressed);
+            prevCoord = e.coord;
+            volren.mousePressEvent(e);
+        }
+        canvas.onmousemove = function(evt) {
+            if (!mousePressed)
+                return;
+            var e = createMouseEvent(evt, canvas, mousePressed);
+            e.pCoord = prevCoord;
+            e.movement = {
+                x: e.coord.x - e.pCoord.x,
+                y: e.coord.y - e.pCoord.y
+            }
+            volren.mouseMoveEvent(e);
+            prevCoord = e.coord;
+        }
+        canvas.onmouseup = function(evt) {
+            mousePressed = false;
+            var e = createMouseEvent(evt, canvas, mousePressed);
+            volren.mouseReleaseEvent(e);
+        }
+    }
+
+    function webGLStart() {
+        var canvas = document.getElementById("webgl");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        window.onresize = function() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            volren.resizeGL();
+        }
+        bindMouseEvents(canvas);
+
+        volren.init(canvas);
+        volren.initializeGL();
+        volren.paintGL();
+    }
+</script>
+
+
+</head>
+
+
+<body onload="webGLStart();" oncontextmenu="return false">
+<div>
+    <canvas id="webgl" style="background:black;"></canvas>
+</div>
+<div>
+    <input type="file" id="fileInput" />
+</div>
+
+<script type="text/javascript">
+    var input = document.getElementById("fileInput");
+    input.onchange = function() {
+        var reader = new FileReader();
+        reader.onloadend = function() {
+            var result = this.result;
+            var volume = new Uint8Array(result);
+            volren.setVolume(volume);
+            volren.paintGL();
+        }
+        reader.readAsArrayBuffer(input.files[0]);
+    }
+</script>
+
+</body>
+
+</html>
