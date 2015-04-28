@@ -36,7 +36,7 @@ var volren = function() {
 	function paintGL() {
 		if (!texVol)
 			return;
-		
+
 		drawEntrExitTextures();
 		// full screen quad
 		context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT);
@@ -47,14 +47,18 @@ var volren = function() {
 		context.bindTexture(context.TEXTURE_2D, texExit);
 		context.activeTexture(context.TEXTURE2);
 		context.bindTexture(context.TEXTURE_2D, texVol);
+		context.activeTexture(context.TEXTURE3);
+		context.bindTexture(context.TEXTURE_2D, texTf);
 		context.useProgram(progQuad);
 		// uniforms
 		progQuad.uniformTexEntr = context.getUniformLocation(progQuad, 'texEntr');
 		progQuad.uniformTexExit = context.getUniformLocation(progQuad, 'texExit');
 		progQuad.uniformTexVol  = context.getUniformLocation(progQuad, 'texVol');
+		progQuad.uniformTexTf   = context.getUniformLocation(progQuad, 'texTf');
 		context.uniform1i(progQuad.uniformTexEntr, 0);
 		context.uniform1i(progQuad.uniformTexExit, 1);
 		context.uniform1i(progQuad.uniformTexVol,  2);
+		context.uniform1i(progQuad.uniformTexTf,   3);
 
 		context.bindBuffer(context.ARRAY_BUFFER, vboQuad);
 		context.vertexAttribPointer(progQuad.attribVert, vboQuad.nFloatsPerVert, context.FLOAT, false, 0, 0);
@@ -64,6 +68,8 @@ var volren = function() {
 		context.drawArrays(context.TRIANGLE_FAN, 0, vboQuad.nVerts);
 
 		context.useProgram(null);
+		context.activeTexture(context.TEXTURE3);
+		context.bindTexture(context.TEXTURE_2D, null);
 		context.activeTexture(context.TEXTURE2);
 		context.bindTexture(context.TEXTURE_2D, null);
 		context.activeTexture(context.TEXTURE1);
@@ -346,7 +352,7 @@ var volren = function() {
 		context.framebufferTexture2D(context.FRAMEBUFFER, context.COLOR_ATTACHMENT0, context.TEXTURE_2D, texEntr, 0);
 		context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT);
 		context.drawElements(context.TRIANGLES, iboCube.nNumbers, context.UNSIGNED_SHORT, 0);
-		
+
 		context.disable(context.CULL_FACE);
 		context.bindBuffer(context.ELEMENT_ARRAY_BUFFER, null);
 		context.useProgram(null);
@@ -363,6 +369,18 @@ var volren = function() {
 		context.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_S, context.CLAMP_TO_EDGE);
 		context.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_T, context.CLAMP_TO_EDGE);
 		context.texImage2D(context.TEXTURE_2D, 0, context.ALPHA, 32, 32 * 32, 0, context.ALPHA, context.UNSIGNED_BYTE, volume);
+		context.bindTexture(context.TEXTURE_2D, null);
+	}
+
+	function setTransFunc(tfData) {
+		// console.log("transfer function resolution: ", tfData.length);
+		texTf = context.createTexture();
+		context.bindTexture(context.TEXTURE_2D, texTf);
+		context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MAG_FILTER, context.LINEAR);
+		context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MIN_FILTER, context.LINEAR);
+		context.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_S, context.CLAMP_TO_EDGE);
+		context.texParameteri(context.TEXTURE_2D, context.TEXTURE_WRAP_T, context.CLAMP_TO_EDGE);
+		context.texImage2D(context.TEXTURE_2D, 0, context.RGBA, tfData.length/4, 1, 0, context.RGBA, context.UNSIGNED_BYTE, new Uint8Array(tfData));
 		context.bindTexture(context.TEXTURE_2D, null);
 	}
 
@@ -386,6 +404,7 @@ var volren = function() {
 	var texExit;
 	var texEntr;
 	var texVol = null;
+	var texTf = null;
 	var eye = [16.0, 16.0, 64.0];
 	var focal = [16.0, 16.0, 16.0];
 	var up = [0.0, 1.0, 0.0];
@@ -405,6 +424,7 @@ var volren = function() {
 		mousePressEvent: mousePressEvent,
 		mouseMoveEvent: mouseMoveEvent,
 		mouseReleaseEvent: mouseReleaseEvent,
-		setVolume: setVolume
+		setVolume: setVolume,
+		setTransFunc: setTransFunc
 	}
 }();
