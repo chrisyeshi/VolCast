@@ -1,0 +1,30 @@
+{
+  "name": "VolCast",
+  "version": "0.0.0",
+  "homepage": "https://github.com/chrisyeshi/VolCast",
+  "authors": [
+    "Chris Ye <chrisyeshi@gmail.com>"
+  ],
+  "description": "WebGL based Volume Rendering",
+  "main": "index.html",
+  "keywords": [
+    "volume",
+    "rendering",
+    "webgl",
+    "raycasting"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bootstrap": "~3.3.4",
+    "jquery": "~2.1.4",
+    "gl-matrix": "~2.2.1",
+    "jquery-ui": "~1.11.4"
+  }
+}
