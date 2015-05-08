@@ -14,3 +14,14 @@ Then we need to install the local packages with both npm and bower.
 npm intall
 bower install
 ```
+
+To build, just run
+```
+gulp
+```
+
+When built sucessfully, the contents in the dist directory is the final website.
+
+## Deployment
+
+Since our volume renderer is strictly front end only, we are hosting it using github pages, so the branch gh-pages is the deployment branch. To deploy, just upload the contents in the dist directory to gh-pages.
